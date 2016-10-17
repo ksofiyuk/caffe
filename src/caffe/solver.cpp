@@ -195,8 +195,8 @@ void Solver<Dtype>::Step(int iters) {
   const int start_iter = iter_;
   const int stop_iter = iter_ + iters;
   int average_loss = this->param_.average_loss();
-  losses_.clear();
-  smoothed_loss_ = 0;
+//  losses_.clear();
+//  smoothed_loss_ = 0;
 
   while (iter_ < stop_iter) {
     // zero-init the params
@@ -486,7 +486,7 @@ void Solver<Dtype>::UpdateSmoothedLoss(Dtype loss, int start_iter,
     int size = losses_.size();
     smoothed_loss_ = (smoothed_loss_ * (size - 1) + loss) / size;
   } else {
-    int idx = (iter_ - start_iter) % average_loss;
+    int idx = iter_ % average_loss;
     smoothed_loss_ += (loss - losses_[idx]) / average_loss;
     losses_[idx] = loss;
   }
