@@ -80,6 +80,7 @@ class ConcatLayer : public Layer<Dtype> {
   int num_concats_;
   int concat_input_size_;
   int concat_axis_;
+  int allow_pad_;
 };
 
 }  // namespace caffe

@@ -9,6 +9,7 @@ template <typename Dtype>
 void ConcatLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   const ConcatParameter& concat_param = this->layer_param_.concat_param();
+  allow_pad_ = concat_param.allow_pad();
   CHECK(!(concat_param.has_axis() && concat_param.has_concat_dim()))
       << "Either axis or concat_dim should be specified; not both.";
 }
@@ -31,22 +32,45 @@ void ConcatLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
   }
   // Initialize with the first blob.
   vector<int> top_shape = bottom[0]->shape();
-  num_concats_ = bottom[0]->count(0, concat_axis_);
-  concat_input_size_ = bottom[0]->count(concat_axis_ + 1);
+  for (int i = 1; i < bottom.size(); ++i) {
+    CHECK_EQ(num_axes, bottom[i]->num_axes())
+      << "All inputs must have the same #axes.";
+    for (int j = 0; j < num_axes; ++j) {
+      if (j == concat_axis_) { continue; }
+      if (bottom[i]->shape(j) > top_shape[j]) {
+        top_shape[j] = bottom[i]->shape(j);
+      }
+    }
+  }
+
+  if (allow_pad_ > 0) {
+    CHECK_EQ(concat_axis_, 1)
+      << "Concatenation with auto-alignment can done only by axis=1";
+  }
+
   int bottom_count_sum = bottom[0]->count();
   for (int i = 1; i < bottom.size(); ++i) {
     CHECK_EQ(num_axes, bottom[i]->num_axes())
         << "All inputs must have the same #axes.";
+    if (allow_pad_ > 0) {
+      CHECK_EQ(num_axes, 4) << "Auto-alignment works only with 2D layers.";
+    }
     for (int j = 0; j < num_axes; ++j) {
       if (j == concat_axis_) { continue; }
-      CHECK_EQ(top_shape[j], bottom[i]->shape(j))
+      CHECK_LE(top_shape[j] - bottom[i]->shape(j), allow_pad_)
           << "All inputs must have the same shape, except at concat_axis.";
     }
     bottom_count_sum += bottom[i]->count();
     top_shape[concat_axis_] += bottom[i]->shape(concat_axis_);
   }
+
   top[0]->Reshape(top_shape);
-  CHECK_EQ(bottom_count_sum, top[0]->count());
+  num_concats_ = top[0]->count(0, concat_axis_);
+  concat_input_size_ = top[0]->count(concat_axis_ + 1);
+
+  if (allow_pad_ == 0) {
+    CHECK_EQ(bottom_count_sum, top[0]->count());
+  }
   if (bottom.size() == 1) {
     top[0]->ShareData(*bottom[0]);
     top[0]->ShareDiff(*bottom[0]);
@@ -57,6 +81,7 @@ template <typename Dtype>
 void ConcatLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   if (bottom.size() == 1) { return; }
+  CHECK_EQ(allow_pad_, 0) << "Auto-alignment is not implemented for CPU.";
   Dtype* top_data = top[0]->mutable_cpu_data();
   int offset_concat_axis = 0;
   const int top_concat_axis = top[0]->shape(concat_axis_);
@@ -77,6 +102,7 @@ template <typename Dtype>
 void ConcatLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
   if (bottom.size() == 1) { return; }
+  CHECK_EQ(allow_pad_, 0) << "Auto-alignment is not implemented for CPU.";
   const Dtype* top_diff = top[0]->cpu_diff();
   int offset_concat_axis = 0;
   const int top_concat_axis = top[0]->shape(concat_axis_);

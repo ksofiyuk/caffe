@@ -497,6 +497,7 @@ message ConcatParameter {
 
   // DEPRECATED: alias for "axis" -- does not support negative indexing.
   optional uint32 concat_dim = 1 [default = 1];
+  optional uint32 allow_pad = 26 [default = 0];
 }
 
 message BatchNormParameter {
@@ -909,6 +910,7 @@ message PoolingParameter {
   // If global_pooling then it will pool over the size of the bottom by doing
   // kernel_h = bottom->height and kernel_w = bottom->width
   optional bool global_pooling = 12 [default = false];
+  optional bool ceil_mode = 13 [default = true];
 }
 
 message PowerParameter {
