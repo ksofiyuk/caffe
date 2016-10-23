@@ -161,6 +161,10 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(
           filter_desc_, top_descs_[i], conv_descs_[i], bottom_descs_[i],
           CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
         workspace_limit_bytes, &bwd_data_algo_[i]));
+    if (bwd_data_algo_[i] == CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD) {
+      bwd_data_algo_[i] = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
+    }
+    // LOG(INFO) << "backward_alg: " << this->layer_param_.name() << " " << bwd_data_algo_[i];
 
     // get workspace size
     CUDNN_CHECK(cudnnGetConvolutionBackwardDataWorkspaceSize(handle_[0],

@@ -13,6 +13,18 @@ const int kMaxBlobAxes = 32;
 
 namespace caffe {
 
+template <typename Dtype> class Blob;
+
+struct SharedBlobData {
+  shared_ptr<SyncedMemory> data_;
+  int capacity_;
+};
+
+struct SharedBlobDiff {
+  shared_ptr<SyncedMemory> diff_;
+  int capacity_;
+};
+
 /**
  * @brief A wrapper around SyncedMemory holders serving as the basic
  *        computational unit through which Layer%s, Net%s, and Solver%s
@@ -216,6 +228,16 @@ class Blob {
     return diff_;
   }
 
+  inline const shared_ptr<SyncedMemory>& shape_data() const {
+    CHECK(shape_data_);
+    return shape_data_;
+  }
+
+  void init_shared_data();
+  void set_shared_data(Blob &blob);
+  void init_shared_diff();
+  void set_shared_diff(Blob &blob);
+
   const Dtype* cpu_data() const;
   void set_cpu_data(Dtype* data);
   const int* gpu_shape() const;
@@ -269,6 +291,8 @@ class Blob {
   shared_ptr<SyncedMemory> data_;
   shared_ptr<SyncedMemory> diff_;
   shared_ptr<SyncedMemory> shape_data_;
+  shared_ptr<SharedBlobData> shared_data_;
+  shared_ptr<SharedBlobDiff> shared_diff_;
   vector<int> shape_;
   int count_;
   int capacity_;

@@ -19,6 +19,7 @@
 #include "caffe/layers/memory_data_layer.hpp"
 #include "caffe/layers/python_layer.hpp"
 #include "caffe/sgd_solvers.hpp"
+#include "caffe/memory_optimize.hpp"
 
 // Temporary solution for numpy < 1.7 versions: old macro, no promises.
 // You're strongly advised to upgrade to >= 1.7.
@@ -334,7 +335,9 @@ BOOST_PYTHON_MODULE(_caffe) {
     .def("load_hdf5", &Net_LoadHDF5);
   BP_REGISTER_SHARED_PTR_TO_PYTHON(Net<Dtype>);
 
-  bp::class_<Blob<Dtype>, shared_ptr<Blob<Dtype> >, boost::noncopyable>(
+  bp::def("optimize_memory", &MemoryOptimizer<Dtype>::optimizeMemory);
+
+    bp::class_<Blob<Dtype>, shared_ptr<Blob<Dtype> >, boost::noncopyable>(
     "Blob", bp::no_init)
     .add_property("shape",
         bp::make_function(

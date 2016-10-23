@@ -37,11 +37,82 @@ void Blob<Dtype>::Reshape(const vector<int>& shape) {
     shape_[i] = shape[i];
     shape_data[i] = shape[i];
   }
+  if (shared_data_) {
+    if (count_ > shared_data_->capacity_) {
+      shared_data_->capacity_ = count_;
+      shared_data_->data_.reset(new SyncedMemory(shared_data_->capacity_ * sizeof(Dtype)));
+    }
+    data_ = shared_data_->data_;
+  }
+  if (shared_diff_) {
+    if (count_ > shared_diff_->capacity_) {
+      shared_diff_->capacity_ = count_;
+      shared_diff_->diff_.reset(new SyncedMemory(shared_diff_->capacity_ * sizeof(Dtype)));
+    }
+    diff_ = shared_data_->data_;
+  }
   if (count_ > capacity_) {
     capacity_ = count_;
-    data_.reset(new SyncedMemory(capacity_ * sizeof(Dtype)));
-    diff_.reset(new SyncedMemory(capacity_ * sizeof(Dtype)));
+    if (!shared_data_)
+      data_.reset(new SyncedMemory(capacity_ * sizeof(Dtype)));
+    if (!shared_diff_)
+      diff_.reset(new SyncedMemory(capacity_ * sizeof(Dtype)));
   }
+}
+
+template <typename Dtype>
+void Blob<Dtype>::set_shared_data(Blob &blob) {
+
+  blob.init_shared_data();
+
+  shared_data_ = blob.shared_data_;
+  if (capacity_ > blob.capacity_) {
+    shared_data_->data_ = data_;
+    shared_data_->capacity_ = capacity_;
+    blob.capacity_ = capacity_;
+    blob.data_ = data_;
+  }
+
+  capacity_ = shared_data_->capacity_;
+  data_ = shared_data_->data_;
+}
+
+template <typename Dtype>
+void Blob<Dtype>::init_shared_data() {
+  if (shared_data_) {
+    return;
+  }
+  shared_data_.reset(new SharedBlobData());
+  shared_data_->data_ = data_;
+  shared_data_->capacity_ = capacity_;
+}
+
+
+template <typename Dtype>
+void Blob<Dtype>::set_shared_diff(Blob &blob) {
+
+  blob.init_shared_diff();
+
+  shared_diff_ = blob.shared_diff_;
+  if (capacity_ > blob.capacity_) {
+    shared_diff_->diff_ = diff_;
+    shared_diff_->capacity_ = capacity_;
+    blob.capacity_ = capacity_;
+    blob.diff_ = diff_;
+  }
+
+  capacity_ = shared_diff_->capacity_;
+  diff_ = shared_diff_->diff_;
+}
+
+template <typename Dtype>
+void Blob<Dtype>::init_shared_diff() {
+  if (shared_diff_) {
+    return;
+  }
+  shared_diff_.reset(new SharedBlobDiff());
+  shared_diff_->diff_ = diff_;
+  shared_diff_->capacity_ = capacity_;
 }
 
 template <typename Dtype>
